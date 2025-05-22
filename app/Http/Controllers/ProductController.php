@@ -24,7 +24,11 @@ class ProductController extends Controller {
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $image) {
                 $path = $image->store('products', 'public');
-                $product->images()->create(['path' => $path]);
+                $product = Product::create($data);
+                $product->images()->create([
+                    'cloudinary_public_id' => $path,
+                    'image_url' => $path,
+                ]);
             }
         }
         return redirect()->route('products.index')->with('success','Produk berhasil ditambah');
