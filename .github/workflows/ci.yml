@@ -1,4 +1,4 @@
-name: Laravel CI/CD
+name: Laravel CI
 
 on:
   push:
@@ -7,18 +7,18 @@ on:
     branches: [ main ]
 
 jobs:
-  laravel:
+  laravel-tests:
     runs-on: ubuntu-latest
 
     services:
       postgres:
         image: postgres:13
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: laravel_test
         ports:
           - 5432:5432
-        env:
-          POSTGRES_DB: laravel_test
-          POSTGRES_USER: laravel
-          POSTGRES_PASSWORD: secret
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -26,35 +26,33 @@ jobs:
           --health-retries 5
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
-    - name: Setup PHP
+    - name: Setup PHP with PostgreSQL extensions
       uses: shivammathur/setup-php@v2
       with:
-        php-version: '8.2'
-        extensions: mbstring, bcmath, pgsql
+        php-version: '8.1'  # sesuaikan versi PHP
+        extensions: pgsql, pdo_pgsql, bcmath, mbstring, tokenizer, xml, curl, sqlite, fileinfo
 
-    - name: Install Composer deps
-      run: composer install --prefer-dist --no-interaction --no-ansi
+    - name: Install dependencies
+      run: composer install --prefer-dist --no-progress --no-suggest --no-interaction
 
     - name: Copy .env file
       run: cp .env.example .env
 
-    - name: Set PostgreSQL ENV variables
-      run: |
-        echo "DB_CONNECTION=pgsql" >> .env
-        echo "DB_HOST=127.0.0.1" >> .env
-        echo "DB_PORT=5432" >> .env
-        echo "DB_DATABASE=laravel_test" >> .env
-        echo "DB_USERNAME=laravel" >> .env
-        echo "DB_PASSWORD=secret" >> .env
-
-    - name: Generate APP_KEY
+    - name: Generate app key
       run: php artisan key:generate
 
-    - name: Run Migrations
+    - name: Configure database settings for testing
+      run: |
+        php -r "file_put_contents('.env', str_replace(
+          ['DB_HOST=127.0.0.1', 'DB_DATABASE=laravel', 'DB_USERNAME=root', 'DB_PASSWORD='],
+          ['DB_HOST=localhost', 'DB_DATABASE=laravel_test', 'DB_USERNAME=postgres', 'DB_PASSWORD=postgres'],
+          file_get_contents('.env')
+        ));"
+
+    - name: Run migrations
       run: php artisan migrate --force
 
-    - name: Run Tests
-      run: php artisan test --no-interaction
+    - name: Run tests
+      run: php artisan test
