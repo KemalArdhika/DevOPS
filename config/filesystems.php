@@ -59,6 +59,10 @@ return [
             'throw' => false,
             'report' => false,
         ],
+        'cloudinary' => [
+            'driver' => 'local', // Ganti ini dengan Cloudinary driver jika digunakan beneran
+            'root' => storage_path('app/public/cloudinary'), // untuk testing lokal
+],
 
     ],
 

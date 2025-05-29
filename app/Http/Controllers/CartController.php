@@ -1,29 +1,49 @@
 <?php
 namespace App\Http\Controllers;
+
 use App\Models\CartItem;
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
-class CartController extends Controller {
-    public function index() {
-        // Ambil seluruh item keranjang beserta data produk
+class CartController extends Controller
+{
+    public function index()
+    {
         $items = CartItem::with('product')->get();
         return view('cart.index', compact('items'));
     }
-    public function store(Request $request) {
-        // Tambah produk ke keranjang atau perbarui quantity jika sudah ada
-        $item = CartItem::updateOrCreate(
-            ['product_id' => $request->product_id],
-            ['quantity'   => $request->quantity ?? 1]
-        );
-        return redirect()->route('cart.index')->with('success','Item ditambahkan ke keranjang');
+
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'quantity' => 'required|integer|min:1'
+        ]);
+
+        CartItem::create([
+            'user_id' => Auth::id() ?? 1,
+            'product_id' => $data['product_id'],
+            'quantity' => $data['quantity'],
+        ]);
+
+        return redirect()->route('cart.index')
+            ->with('success', 'Item added to cart.');
     }
-    public function update(Request $request, CartItem $cartItem) {
-        $cartItem->update(['quantity' => $request->quantity]);
-        return redirect()->route('cart.index')->with('success','Jumlah item diperbarui');
+
+    public function update(Request $request, CartItem $cart)
+    {
+        $cart->update($request->validate([
+            'quantity' => 'required|integer|min:1'
+        ]));
+        return redirect()->route('cart.index')
+            ->with('success', 'Cart updated.');
     }
-    public function destroy(CartItem $cartItem) {
-        $cartItem->delete();
-        return redirect()->route('cart.index')->with('success','Item dihapus dari keranjang');
+
+    public function destroy(CartItem $cart)
+    {
+        $cart->delete();
+        return redirect()->route('cart.index')
+            ->with('success', 'Item removed.');
     }
 }
